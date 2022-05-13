@@ -1,0 +1,59 @@
+version: '3.8'
+services:
+  # For connecting to this instance
+  #   host: localhost
+  #   port: 27017
+  #   username: admin
+  #   password: admin-password
+  #   authentication db: admin
+  #
+  # Example connection string
+  #   mongodb://{username}:{password}@localhost:27017/?authSource=admin&readPreference=primary&ssl=false
+  mongo:
+    image: mongo:5.0.8-focal
+    container_name: image_processor_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin-password
+      MONGO_INITDB_DATABASE: image-processor
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+
+  redis:
+    image: redis:7.0.0-bullseye
+    container_name: image_processor_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # the password for seq is 'seq_password'
+  # it was generated with:
+  # $ echo 'seq_password' | docker run --rm -i datalust/seq config hash
+  logging:
+    image: datalust/seq:latest
+    container_name: image_processor_seq
+    deploy:
+      resources:
+        limits:
+          memory: 16g
+        reservations:
+          memory: 16g
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "5341:5341"
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORDHASH=FDmru7iNGXEb7pxziz1gh0wXAh1v4MMGz+lmd1iwVhd0mdDtPQ==
+    volumes:
+      - seq_data:/data
+
+volumes:
+  mongodb_data:
+  mongodb_config:
+  redis_data:
+  seq_data:
