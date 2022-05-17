@@ -16,7 +16,7 @@ public class GetContributionQueryHandler : IRequestHandler<GetContributionQuery,
 
     public async Task<GetContributionResult> Handle(GetContributionQuery request, CancellationToken cancellationToken)
     {
-        Contribution? contribution = await _unitOfWork.ContributionRepository.FindById(request.Id);
+        Contribution? contribution = await _unitOfWork.ContributionRepository.FindById(request.Id, cancellationToken);
 
         if (contribution == null)
         {

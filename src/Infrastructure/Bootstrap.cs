@@ -11,9 +11,10 @@ namespace Infrastructure;
 
 public static class Bootstrap
 {
-    public static IServiceCollection AddContributionRepository(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
         services.AddTransient<IUnitOfWork, MongoUnitOfWork>();
+        services.AddTransient<IEventPublisher, MongoDbTransactionalPublisher>();
 
         return services;
     }
@@ -40,7 +41,7 @@ public static class Bootstrap
         Console.WriteLine($"***MONGO USER:{username}***");
         Console.WriteLine($"***MONGO PWD:{password}***");
 
-        services.AddSingleton(s =>
+        services.AddSingleton<IMongoClient>(s =>
             new MongoClient(
                 $"mongodb://{username}:{password}@localhost:27017/?authSource={authSource}&readPreference=primary&ssl=false"));
 

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Domain.Commands;
 using Domain.Entities;
 using Domain.Interfaces;
-using Domain.Tests.Support;
 
 using FluentAssertions;
 
@@ -22,17 +21,19 @@ public class AddContributionCommandHandlerTests
     {
         // Arrange
         Mock<IUnitOfWork> mockUnitOfWork = new();
+        Mock<IEventPublisher> mockEventPublisher = new();
+        Mock<ITransaction> mockTransaction = new();
         Mock<IContributionRepository> mockContributionRepository = new();
-        Mock<IEventOutboxRepository> mockEventOutboxRepository = new();
 
         mockUnitOfWork
-            .Setup(uow => uow.ContributionRepository).Returns(mockContributionRepository.Object);
+            .Setup(uow => uow.BeginTransaction(It.IsAny<IEventPublisher>()))
+            .Returns(mockTransaction.Object);
+
         mockUnitOfWork
-            .Setup(uow => uow.EventOutboxRepository).Returns(mockEventOutboxRepository.Object);
+            .Setup(uow => uow.ContributionRepository)
+            .Returns(mockContributionRepository.Object);
 
-        MockTransactionalUnitOfWork transactionalUnitOfWorkUnitOfWork = new(mockUnitOfWork);
-
-        AddContributionCommandHandler handler = new(transactionalUnitOfWorkUnitOfWork);
+        AddContributionCommandHandler handler = new(mockUnitOfWork.Object, mockEventPublisher.Object);
 
         // Act
         AddContributionCommand command = new()
@@ -52,10 +53,7 @@ public class AddContributionCommandHandlerTests
         result.Succeeded.Should().BeTrue();
 
         mockContributionRepository
-            .Verify(ex => ex.Add(It.IsAny<Contribution>()), Times.Once());
-
-        mockEventOutboxRepository
-            .Verify(ex => ex.Add(It.IsAny<OutBoxEvent>()), Times.Once());
+            .Verify(ex => ex.Add(It.IsAny<Contribution>(), CancellationToken.None), Times.Once());
     }
 
     [Fact(DisplayName = "Should fail adding a new contribution and does not publish an event")]
@@ -63,22 +61,22 @@ public class AddContributionCommandHandlerTests
     {
         // Arrange
         Mock<IUnitOfWork> mockUnitOfWork = new();
+        Mock<IEventPublisher> mockEventPublisher = new();
+        Mock<ITransaction> mockTransaction = new();
         Mock<IContributionRepository> mockContributionRepository = new();
-        Mock<IEventOutboxRepository> mockEventOutboxRepository = new();
 
         mockContributionRepository
-            .Setup(repo => repo.Add(It.IsAny<Contribution>()))
+            .Setup(repo => repo.Add(It.IsAny<Contribution>(), CancellationToken.None))
             .Throws<Exception>();
+
+        mockUnitOfWork
+            .Setup(uow => uow.BeginTransaction(It.IsAny<IEventPublisher>()))
+            .Returns(mockTransaction.Object);
 
         mockUnitOfWork
             .Setup(uow => uow.ContributionRepository).Returns(mockContributionRepository.Object);
 
-        mockUnitOfWork
-            .Setup(uow => uow.EventOutboxRepository).Returns(mockEventOutboxRepository.Object);
-
-        MockTransactionalUnitOfWork transactionalUnitOfWorkUnitOfWork = new(mockUnitOfWork);
-
-        AddContributionCommandHandler handler = new(transactionalUnitOfWorkUnitOfWork);
+        AddContributionCommandHandler handler = new(mockUnitOfWork.Object, mockEventPublisher.Object);
 
         // Act
         AddContributionCommand command = new()
@@ -98,11 +96,8 @@ public class AddContributionCommandHandlerTests
         result.Succeeded.Should().BeFalse();
 
         mockContributionRepository
-            .Verify(ex => ex.Add(It.IsAny<Contribution>()), Times.Once());
+            .Verify(ex => ex.Add(It.IsAny<Contribution>(), CancellationToken.None), Times.Once());
 
-        mockEventOutboxRepository
-            .Verify(ex => ex.Add(It.IsAny<OutBoxEvent>()), Times.Never());
-
-        transactionalUnitOfWorkUnitOfWork.TransactionAborted.Should().BeTrue();
+        mockTransaction.Verify(ex => ex.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once());
     }
 }

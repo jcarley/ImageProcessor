@@ -1,5 +1,3 @@
-using System.Data;
-
 using Domain.Entities;
 using Domain.Events;
 using Domain.Interfaces;
@@ -32,18 +30,14 @@ public class AddContributionCommandHandler : IRequestHandler<AddContributionComm
             SampleHiResUrl = request.SampleHiResUrl,
         };
 
-        if (_unitOfWork is not IAmTransactional transactional)
-        {
-            return AddContributionResult.Failed("Non transactional unit of work");
-        }
-
-        using (IDbTransaction transaction = transactional.BeginTransaction(_publisher))
+        // using (ITransaction transaction = _unitOfWork.BeginTransaction(_publisher))
+        using (ITransaction transaction = _unitOfWork.BeginTransaction(_publisher))
         {
             try
             {
                 // Will need to determine the result and take appropriate action
                 // This is internal domain data
-                await _unitOfWork.ContributionRepository.Add(contribution);
+                await _unitOfWork.ContributionRepository.Add(contribution, cancellationToken);
 
                 // The even we want to publish
                 ContributionAdded contributionAdded = new()
@@ -54,24 +48,13 @@ public class AddContributionCommandHandler : IRequestHandler<AddContributionComm
                     MessageId = Guid.NewGuid(),
                 };
 
-                // Store the new event in an outbox record to be published later
-                OutBoxEvent outboxEvent = new()
-                {
-                    Id = Guid.NewGuid(),
-                    Retries = 0,
-                    CreatedAt = DateTime.Now,
-                    OutputStream = "Contributions",
-                    SerializedValue = contributionAdded,
-                };
-
-                // Save the new outbox event to the database
-                await _unitOfWork.EventOutboxRepository.Add(outboxEvent);
+                await _publisher.Publish("contributions", contributionAdded);
 
                 return AddContributionResult.Success(contribution);
             }
             catch (Exception e)
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync(cancellationToken);
 
                 return AddContributionResult.Failed("Failed");
             }

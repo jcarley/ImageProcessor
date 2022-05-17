@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Domain.Commands;
 
 using MediatR;
@@ -11,7 +13,10 @@ public static class Bootstrap
 {
     public static IServiceCollection AddCommands(this IServiceCollection services, IConfiguration config)
     {
-        services.AddMediatR(nameof(AddContributionCommand).GetType().Assembly);
+        Type type = typeof(AddContributionCommandHandler);
+        Assembly declaredAssembly = type.Assembly;
+
+        services.AddMediatR(declaredAssembly);
 
         return services;
     }

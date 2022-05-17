@@ -1,3 +1,4 @@
+using Domain.Entities;
 using Domain.Events;
 using Domain.Interfaces;
 
@@ -10,30 +11,6 @@ public class ContributionEventStream : IEventStream
     public Task<bool> Publish(EventBase evt)
     {
         return Task.FromResult(true);
-    }
-}
-
-public class EventPublisher : IEventPublisher
-{
-    private readonly Dictionary<string, IEventStream?> _eventRegistry;
-
-    public EventPublisher(ContributionEventStream contributionEventStream)
-    {
-        _eventRegistry = new Dictionary<string, IEventStream?>();
-        _eventRegistry.Add(contributionEventStream.StreamName, contributionEventStream);
-    }
-
-    public async Task<bool> Publish(string streamName, EventBase evt)
-    {
-        if (_eventRegistry.TryGetValue(streamName, out IEventStream? stream))
-        {
-            if (stream != null)
-            {
-                return await stream.Publish(evt);
-            }
-        }
-
-        return false;
     }
 }
 
@@ -55,15 +32,15 @@ public class OutboxConsumer
     {
         _changeTrackingEventStream.StartWatch();
 
-        _changeTrackingEventStream.OnChange(async change =>
+        _changeTrackingEventStream.OnChange(async outBoxEvent =>
         {
-            var outboxEvent = change.Event;
-            bool result = await _publisher.Publish(outboxEvent.OutputStream, outboxEvent);
-
-            if (result)
-            {
-                await _unitOfWork.EventOutboxRepository.Delete(outboxEvent);
-            }
+            EventBase? evt = outBoxEvent.SerializedValue;
         });
     }
+}
+
+public interface IChangeTrackingEventStream
+{
+    void StartWatch();
+    void OnChange(Func<OutBoxEvent, Task> action);
 }

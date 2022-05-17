@@ -22,7 +22,7 @@ public abstract class MongoBaseRepository<TModel> : IRepository<TModel> where TM
 
     protected abstract string CollectionName { get; }
 
-    public async Task<IEnumerable<TModel>> ListAll()
+    public async Task<IEnumerable<TModel>> ListAll(CancellationToken cancellationToken)
     {
         IMongoDatabase? db = Client.GetDatabase(DbName);
 
@@ -30,76 +30,67 @@ public abstract class MongoBaseRepository<TModel> : IRepository<TModel> where TM
 
         IMongoQueryable<TModel>? docs = coll.AsQueryable().OfType<TModel>();
 
-        return await docs.ToListAsync();
+        return await docs.ToListAsync(cancellationToken);
     }
 
-    public async Task<TModel> FindById(Guid id)
+    public async Task<TModel> FindById(Guid id, CancellationToken token)
     {
         IMongoDatabase? db = Client.GetDatabase(DbName);
 
         IMongoCollection<TModel>? coll = db.GetCollection<TModel>(CollectionName);
 
-        IMongoQueryable<TModel>? docs = coll.AsQueryable().OfType<TModel>()
-            .Where(c => c.Id == id);
+        IMongoQueryable<TModel>? docs =
+            coll.AsQueryable().OfType<TModel>().Where(c => c.Id == id);
 
-        return await docs.FirstAsync();
+        return await IAsyncCursorSourceExtensions.FirstAsync(docs, token);
     }
 
-    public async Task<TModel> FindBy(Expression<Func<TModel, bool>> predicate)
+    public async Task<TModel> FindBy(Expression<Func<TModel, bool>> predicate, CancellationToken token)
     {
         IMongoDatabase? db = Client.GetDatabase(DbName);
 
         IMongoCollection<TModel>? coll = db.GetCollection<TModel>(CollectionName);
 
-        IMongoQueryable<TModel>? docs = coll.AsQueryable().OfType<TModel>()
-            .Where(predicate);
+        IMongoQueryable<TModel>? docs =
+            coll.AsQueryable().OfType<TModel>().Where(predicate);
 
-        return await docs.FirstAsync();
+        return await docs.FirstAsync(token);
     }
 
-    public async Task Add(TModel contribution)
-    {
-        // This is only an example of how to do multi-document transactions in Mongo.  Single
-        // document inserts/updates are atomic out of the box.
-        IClientSessionHandle? clientSessionHandle = await Client.StartSessionAsync();
-
-        await clientSessionHandle.WithTransactionAsync(async (session, cancellationToken) =>
-        {
-            IMongoClient? client = session.Client;
-
-            IMongoDatabase? db = client.GetDatabase(DbName);
-
-            IMongoCollection<TModel>? coll = db.GetCollection<TModel>(CollectionName);
-
-            InsertOneOptions options = new() { BypassDocumentValidation = false };
-
-            await coll.InsertOneAsync(contribution, options, cancellationToken);
-
-            return contribution;
-        });
-    }
-
-    public async Task Update(TModel contribution)
+    public async Task Update(TModel contribution, CancellationToken token)
     {
         IMongoDatabase? db = Client.GetDatabase(DbName);
 
         IMongoCollection<TModel>? coll = db.GetCollection<TModel>(CollectionName);
 
         await coll.ReplaceOneAsync(c => c.Id == contribution.Id, contribution,
-            new ReplaceOptions { IsUpsert = false });
+            new ReplaceOptions { IsUpsert = false }, token);
     }
 
-    public async Task Delete(TModel entity)
+    public async Task Delete(TModel entity, CancellationToken token)
     {
-        await DeleteById(entity.Id);
+        await DeleteById(entity.Id, token);
     }
 
-    public async Task DeleteById(Guid id)
+    public async Task DeleteById(Guid id, CancellationToken token)
     {
         IMongoDatabase? db = Client.GetDatabase(DbName);
 
         IMongoCollection<TModel>? coll = db.GetCollection<TModel>(CollectionName);
 
-        await coll.DeleteOneAsync(c => c.Id == id);
+        await coll.DeleteOneAsync(c => c.Id == id, token);
+    }
+
+    public async Task<TModel> Add(TModel entity, CancellationToken token)
+    {
+        IMongoDatabase? db = Client.GetDatabase(DbName);
+
+        IMongoCollection<TModel>? coll = db.GetCollection<TModel>(CollectionName);
+
+        InsertOneOptions options = new() { BypassDocumentValidation = false };
+
+        await coll.InsertOneAsync(entity, options, token);
+
+        return entity;
     }
 }

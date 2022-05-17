@@ -16,11 +16,18 @@ services:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: admin-password
       MONGO_INITDB_DATABASE: image-processor
+      MONGO_REPLICA_SET_NAME: rs0
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb
+      - ./Api/keys/:/opt/keyfile/
+    healthcheck:
+      test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo -u $${MONGO_INITDB_ROOT_USERNAME} -p $${MONGO_INITDB_ROOT_PASSWORD} --quiet) -eq 1
+      interval: 10s
+      start_period: 30s
+    command: "--bind_ip_all --replSet rs0 --keyFile /opt/keyfile/keyfile"
 
   redis:
     image: redis:7.0.0-bullseye

@@ -4,5 +4,7 @@ namespace Domain.Interfaces;
 
 public interface IEventPublisher
 {
-    public Task<bool> Publish(string streamName, EventBase evt);
+    AsyncLocal<ITransaction> Transaction { get; set; }
+
+    public Task Publish(string streamName, EventBase evt);
 }

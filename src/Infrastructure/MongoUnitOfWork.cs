@@ -4,57 +4,7 @@ using MongoDB.Driver;
 
 namespace Infrastructure;
 
-public class MongoDbTransaction : ITransaction
-{
-    public MongoDbTransaction(IClientSessionHandle session)
-    {
-        DbTransaction = session;
-    }
-
-    public void Dispose()
-    {
-        (DbTransaction as IClientSessionHandle)?.Dispose();
-        DbTransaction = null;
-    }
-
-    public bool AutoCommit { get; set; }
-
-    public object? DbTransaction { get; set; }
-
-    public void Commit()
-    {
-        if (DbTransaction is IClientSessionHandle session)
-        {
-            session.CommitTransaction();
-        }
-    }
-
-    public async Task CommitAsync(CancellationToken cancellationToken = default)
-    {
-        if (DbTransaction is IClientSessionHandle session)
-        {
-            await session.CommitTransactionAsync(cancellationToken);
-        }
-    }
-
-    public void Rollback()
-    {
-        if (DbTransaction is IClientSessionHandle session)
-        {
-            session.AbortTransaction();
-        }
-    }
-
-    public async Task RollbackAsync(CancellationToken cancellationToken = default)
-    {
-        if (DbTransaction is IClientSessionHandle session)
-        {
-            await session.AbortTransactionAsync(cancellationToken);
-        }
-    }
-}
-
-public class MongoUnitOfWork : IUnitOfWork, IAmTransactional
+public class MongoUnitOfWork : IUnitOfWork
 {
     private readonly IClientSessionHandle _session;
 
@@ -76,26 +26,12 @@ public class MongoUnitOfWork : IUnitOfWork, IAmTransactional
         return transaction;
     }
 
-    // public async Task<TResult> WithTransaction<TResult>(Func<IUnitOfWork, Task<TResult>> callback)
-    // {
-    //     TResult result = default;
-    //     if (!_session.IsInTransaction)
-    //     {
-    //         try
-    //         {
-    //             _session.StartTransaction();
-    //             result = await callback(this);
-    //             await _session.CommitTransactionAsync();
-    //             return result;
-    //         }
-    //         catch (Exception e)
-    //         {
-    //             await _session.AbortTransactionAsync();
-    //         }
-    //     }
-    //
-    //     return result;
-    // }
+    public ITransaction BeginTransaction(IEventPublisher publisher)
+    {
+        ITransaction transaction = BeginTransaction();
+        publisher.Transaction.Value = transaction;
+        return transaction;
+    }
 
     public IContributionRepository ContributionRepository => new MongoContributionRepository(_session);
 

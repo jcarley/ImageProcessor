@@ -14,8 +14,3 @@ public interface ITransaction : IDisposable
 
     Task RollbackAsync(CancellationToken cancellationToken = default);
 }
-
-public interface IAmTransactional
-{
-    public ITransaction BeginTransaction();
-}

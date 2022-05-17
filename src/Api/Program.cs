@@ -6,6 +6,7 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.RegisterMongo(builder.Configuration);
+builder.Services.AddInfrastructureServices();
 builder.Services.AddCommands(builder.Configuration);
 
 builder.Services.AddControllers();
