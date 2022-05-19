@@ -7,9 +7,11 @@ namespace Infrastructure;
 
 public class MongoEventOutboxRepository : MongoBaseRepository<OutBoxEvent>, IEventOutboxRepository
 {
-    public MongoEventOutboxRepository(IClientSessionHandle clientSessionHandle)
+    public MongoEventOutboxRepository(string dbName, IClientSessionHandle clientSessionHandle)
         : base(clientSessionHandle)
     {
+        DbName = dbName;
+
         // PipelineDefinition<ChangeStreamDocument<OutBoxEvent>, ChangeStreamDocument<OutBoxEvent>>? pipeline =
         //     new EmptyPipelineDefinition<ChangeStreamDocument<OutBoxEvent>>()
         //         .Match(x => x.OperationType == ChangeStreamOperationType.Insert);
@@ -33,7 +35,7 @@ public class MongoEventOutboxRepository : MongoBaseRepository<OutBoxEvent>, IEve
         // }
     }
 
-    protected override string DbName => "image_processor";
+    protected override string DbName { get; }
 
     protected override string CollectionName => "event_outbox";
 }

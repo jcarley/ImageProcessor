@@ -1,4 +1,8 @@
+using System.Diagnostics;
+
 using Domain.Interfaces;
+
+using Microsoft.Extensions.Options;
 
 using MongoDB.Driver;
 
@@ -6,11 +10,19 @@ namespace Infrastructure;
 
 public class MongoUnitOfWork : IUnitOfWork
 {
+    private readonly string _dbName;
     private readonly IClientSessionHandle _session;
 
-    public MongoUnitOfWork(IMongoClient mongoClient)
+    public MongoUnitOfWork(IOptions<MongoDBSettings> mongoDbSettings)
     {
-        _session = mongoClient.StartSession();
+        Debug.Assert(mongoDbSettings.Value.MongoDbDatabaseName != null,
+            "mongoDbSettings.Value.MongoDbDatabaseName != null");
+
+        _dbName = mongoDbSettings.Value.MongoDbDatabaseName;
+
+        MongoClient client = new(mongoDbSettings.Value.ConnectionString());
+
+        _session = client.StartSession();
     }
 
     public ITransaction BeginTransaction()
@@ -33,7 +45,7 @@ public class MongoUnitOfWork : IUnitOfWork
         return transaction;
     }
 
-    public IContributionRepository ContributionRepository => new MongoContributionRepository(_session);
+    public IContributionRepository ContributionRepository => new MongoContributionRepository(_dbName, _session);
 
-    public IEventOutboxRepository EventOutboxRepository => new MongoEventOutboxRepository(_session);
+    public IEventOutboxRepository EventOutboxRepository => new MongoEventOutboxRepository(_dbName, _session);
 }

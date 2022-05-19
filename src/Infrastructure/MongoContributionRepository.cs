@@ -7,11 +7,13 @@ namespace Infrastructure;
 
 public class MongoContributionRepository : MongoBaseRepository<Contribution>, IContributionRepository
 {
-    public MongoContributionRepository(IClientSessionHandle clientSessionHandle)
+    public MongoContributionRepository(string dbName, IClientSessionHandle clientSessionHandle)
         : base(clientSessionHandle)
     {
+        DbName = dbName;
     }
 
-    protected override string DbName => "image_processor";
+    protected override string DbName { get; }
+
     protected override string CollectionName => "contributions";
 }

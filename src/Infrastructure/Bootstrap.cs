@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using MongoDB.Bson.Serialization;
-using MongoDB.Driver;
 
 namespace Infrastructure;
 
@@ -27,23 +26,7 @@ public static class Bootstrap
             cm.SetIsRootClass(true);
         });
 
-        IConfigurationSection? mongoDbSettings = config.GetSection("MongoDB");
-
-        if (mongoDbSettings == null)
-        {
-            throw new Exception("Missing MongoDB Settings in config");
-        }
-
-        string username = mongoDbSettings["MongoDBUser"];
-        string password = mongoDbSettings["MongoDBPassword"];
-        string authSource = mongoDbSettings["MongoDBAuthSource"];
-
-        Console.WriteLine($"***MONGO USER:{username}***");
-        Console.WriteLine($"***MONGO PWD:{password}***");
-
-        services.AddSingleton<IMongoClient>(s =>
-            new MongoClient(
-                $"mongodb://{username}:{password}@localhost:27017/?authSource={authSource}&readPreference=primary&ssl=false"));
+        services.Configure<MongoDBSettings>(config.GetSection("MongoDB"));
 
         return services;
     }

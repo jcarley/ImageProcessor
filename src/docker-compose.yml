@@ -1,5 +1,19 @@
 version: '3.8'
 services:
+  
+  # Generating a keyfile for Mongo.  Place the keyfile relative to this docker-compose file.
+  # Then ensure the file path to the key file in the volumes section maps to the location
+  # where you placed your key file.  This should be a standard location across your entire team.
+  #  Mac:
+  #   $ openssl rand -base64 741 > keyfile
+  #   $ chmod 600 keyfile
+  #
+  #  Linux:
+  #   $ openssl rand -base64 756 > keyfile
+  #   $ chmod 600 keyfile
+  #   $ sudo chown 999 keyfile
+  #   $ sudo chgrp 999 keyfile
+  #
   # For connecting to this instance
   #   host: localhost
   #   port: 27017
@@ -28,7 +42,22 @@ services:
       interval: 10s
       start_period: 30s
     command: "--bind_ip_all --replSet rs0 --keyFile /opt/keyfile/keyfile"
-
+  
+  # RabbitMQ with the management plugin enabled.
+  # You can access the management console at http://localhost:15672 and login using
+  # the username and password given below
+  rabbitmq:
+    image: rabbitmq:3.10.1-management
+    container_name: image_processor_rabbitmq
+    ports:
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin-password
+    hostname: messenger
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+  
   redis:
     image: redis:7.0.0-bullseye
     container_name: image_processor_redis
@@ -58,9 +87,16 @@ services:
       - SEQ_FIRSTRUN_ADMINPASSWORDHASH=FDmru7iNGXEb7pxziz1gh0wXAh1v4MMGz+lmd1iwVhd0mdDtPQ==
     volumes:
       - seq_data:/data
+  
+  zipkin:
+    image: openzipkin/zipkin:2.23
+    container_name: image_processor_zipkin
+    ports:
+      - "9411:9411"
 
 volumes:
   mongodb_data:
   mongodb_config:
   redis_data:
   seq_data:
+  rabbitmq_data:

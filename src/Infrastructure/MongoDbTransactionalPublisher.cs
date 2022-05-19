@@ -2,18 +2,21 @@ using Domain.Entities;
 using Domain.Events;
 using Domain.Interfaces;
 
+using Microsoft.Extensions.Options;
+
 using MongoDB.Driver;
 
 namespace Infrastructure;
 
 public class MongoDbTransactionalPublisher : IEventPublisher
 {
-    public MongoDbTransactionalPublisher()
+    public MongoDbTransactionalPublisher(IOptions<MongoDBSettings> mongoDbSettings)
     {
+        DbName = mongoDbSettings.Value.MongoDbDatabaseName;
         Transaction = new AsyncLocal<ITransaction>();
     }
 
-    private string DbName => "image_processor";
+    private string DbName { get; }
     private string CollectionName => "outbox.published";
 
     public AsyncLocal<ITransaction> Transaction { get; set; }

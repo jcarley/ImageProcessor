@@ -53,7 +53,33 @@ public class ContributionController : ControllerBase
                 return StatusCode(StatusCodes.Status500InternalServerError, string.Join("", contributionResult.Errors));
             }
 
-            return StatusCode(StatusCodes.Status200OK, contributionResult.Data);
+            Contribution? contribution = contributionResult.Data;
+
+            // map to return entity; this could use AutoMapper.
+            // this mapping really doesn't make much sense to do
+            // here in this context because the structures of the
+            // GetContributionQuery object and Contribution model
+            // are exactly the same.  this was left in to show
+            // how to map from database models to your public
+            // interface.  the benefits of this pattern are not apparent
+            // in this example.  as the application grows, the 
+            // models tend to grow as well.  there may be attributes
+            // that you don't want exposed to the public.  having
+            // this pattern in place from the beginning allows for
+            // really easy refactoring to expose only what is necessary
+            // to the public interface
+            GetContributionQuery getContributionQuery = new()
+            {
+                Id = contribution.Id,
+                Name = contribution.Name,
+                Size = contribution.Size,
+                ImageType = contribution.ImageType,
+                ThumbnailUrl = contribution.ThumbnailUrl,
+                HiResUrl = contribution.HiResUrl,
+                SampleHiResUrl = contribution.SampleHiResUrl,
+            };
+
+            return StatusCode(StatusCodes.Status200OK, getContributionQuery);
         }
         catch (Exception e)
         {
