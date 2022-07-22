@@ -17,5 +17,6 @@ public class Contribution : IIdentity
     public string? ThumbnailUrl { get; set; }
 
     public ExifData? Exif { get; set; }
+
     public Guid Id { get; set; }
 }
